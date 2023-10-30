@@ -1,0 +1,20 @@
+# virtualenv
+.vscode
+
+# Environment
+*.env
+!app.env
+
+#vscode debug
+__debug_*
+
+
+#buid app
+bgp_elastic_uploader
+
+#log file
+*.log
+
+# temp file
+tmp
+tmp/*
