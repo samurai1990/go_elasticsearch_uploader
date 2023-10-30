@@ -53,8 +53,8 @@ func main() {
 		log.Fatalln(err)
 	}
 
+	// gather data and upload to elastic search
 	gather := helpers.NewGatherInfo(tarGZ.ExtraxtFiles["table"], tarGZ.ExtraxtFiles["GeoLite2-Country"], tarGZ.ExtraxtFiles["asn"])
-	// json := helpers.NewGatherInfo("./tmp/table-22-10-23.jsonl", "./tmp/GeoLite2-Country.mmdb", "./tmp/asns-22-10-23.csv")
 	elk := helpers.NewElasticConfig(conf.ElasticUrl, conf.ElasticApikey)
 	gather.ElasticInterface = elk
 	if err := gather.MakeBuild(); err != nil {
