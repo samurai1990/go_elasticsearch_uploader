@@ -27,7 +27,7 @@ type GatherJson struct {
 }
 
 type GatherInfo struct {
-	TablePath        string
+	ChunkPath        []string
 	GeommdbPath      string
 	CsvPath          string
 	ElasticInterface *ElasticConfig
@@ -45,9 +45,9 @@ type CSVField struct {
 	class string
 }
 
-func NewGatherInfo(tablePath, geoMMdbPath, CsvPath string) *GatherInfo {
+func NewGatherInfo(chunkPath []string, geoMMdbPath, CsvPath string) *GatherInfo {
 	return &GatherInfo{
-		TablePath:   tablePath,
+		ChunkPath:   chunkPath,
 		GeommdbPath: geoMMdbPath,
 		CsvPath:     CsvPath,
 	}
@@ -64,77 +64,75 @@ func (g *GatherInfo) MakeBuild() error {
 	c := cache.New(3*time.Minute, 5*time.Minute)
 
 	workers := 2000
-	outputQueue := make(chan GatherJson)
-	processQueue := make(chan GatherJson)
-	Done := make(chan bool)
+	producers := 1000
+	deliveries := 2
 
-	tableFile, err := os.Open(g.TablePath)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer tableFile.Close()
+	deliveryQueue := make(chan GatherJson)
+	workerQueue := make(chan GatherJson)
+	producerQueue := make(chan string)
+	Done := make(chan bool)
 
 	DumpCSVToCache(g.CsvPath, c)
 
-	var cnt int64
-	go func() {
-		for {
-			select {
-			case structOut, ok := <-outputQueue:
-				if ok {
-					wg.Done()
-					g.ElasticInterface.ElasticJson = ElasticDocs(structOut)
-					if err := g.ElasticInterface.UploadtoElastic(); err != nil {
-						if errors.Is(err, core.ErrEmpty) {
-							log.Println(err)
-						} else {
-							log.Fatalln(err)
-						}
-					} else {
-						atomic.AddInt64(&cnt, 1)
-					}
-				} else {
-					return
-				}
-			case <-Done:
-				close(outputQueue)
-			}
-		}
-	}()
+	if err := g.ElasticInterface.Connect(); err != nil {
+		log.Fatal(err)
+	}
 
-	for i := 0; i < workers; i++ {
+	var cnt int64
+
+	for d := 0; d < deliveries; d++ {
 		go func() {
-			for obj := range processQueue {
-				MetaData(c, g.GeommdbPath, obj, outputQueue)
+			for {
+				select {
+				case out, ok := <-deliveryQueue:
+					if ok {
+						g.ElasticInterface.ElasticJson = ElasticDocs(out)
+						if err := g.ElasticInterface.UploadtoElastic(); err != nil {
+							if errors.Is(err, core.ErrEmpty) {
+								log.Println(err)
+							} else {
+								log.Fatalln(err)
+							}
+						} else {
+							atomic.AddInt64(&cnt, 1)
+						}
+						wg.Done()
+					} else {
+						return
+					}
+				case <-Done:
+					close(deliveryQueue)
+					close(workerQueue)
+					close(producerQueue)
+				}
 			}
 		}()
 	}
 
-	scannerTable := bufio.NewScanner(tableFile)
-	for scannerTable.Scan() {
-		table := JsonlField{}
-		line := scannerTable.Bytes()
-		err := json.Unmarshal(line, &table)
-		if err != nil {
-			log.Println("Error parsing line:", err)
-			continue
-		}
-
-		result := GatherJson{
-			ASN:       table.Asn,
-			Prefix:    table.Cidr,
-			TimeStamp: getTime(),
-		}
-		wg.Add(1)
-		processQueue <- result
+	for w := 0; w < workers; w++ {
+		go func() {
+			for obj := range workerQueue {
+				MetaData(c, g.GeommdbPath, obj, deliveryQueue)
+			}
+		}()
 	}
-	if err := scannerTable.Err(); err != nil {
-		log.Fatal(err)
+
+	for p := 0; p < producers; p++ {
+		go func() {
+			for path := range producerQueue {
+				wg.Add(1)
+				Producer(path, wg, workerQueue)
+			}
+		}()
+	}
+
+	for _, path := range g.ChunkPath {
+		producerQueue <- path
 	}
 
 	wg.Wait()
 	Done <- true
-	fmt.Println("total task:", cnt)
+	log.Printf("total doc sended to elastic is: %d", cnt)
 	c.Flush()
 	return nil
 }
@@ -174,5 +172,36 @@ func DumpCSVToCache(path string, c *cache.Cache) {
 		}
 		replacedStr := strings.Replace(records[1], "\"", "'", -1)
 		c.Set(records[0][2:], replacedStr, cache.DefaultExpiration)
+	}
+}
+
+func Producer(path string, wg *sync.WaitGroup, ch chan GatherJson) {
+	defer wg.Done()
+	tableFile, err := os.Open(path)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer tableFile.Close()
+
+	scannerTable := bufio.NewScanner(tableFile)
+	for scannerTable.Scan() {
+		table := JsonlField{}
+		line := scannerTable.Bytes()
+		err := json.Unmarshal(line, &table)
+		if err != nil {
+			log.Println("Error parsing line:", err)
+			continue
+		}
+
+		result := GatherJson{
+			ASN:       table.Asn,
+			Prefix:    table.Cidr,
+			TimeStamp: getTime(),
+		}
+		wg.Add(1)
+		ch <- result
+	}
+	if err := scannerTable.Err(); err != nil {
+		log.Fatal(err)
 	}
 }

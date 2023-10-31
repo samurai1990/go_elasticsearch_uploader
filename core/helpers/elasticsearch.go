@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net"
 	"reflect"
 	"time"
@@ -19,6 +20,7 @@ type ElasticConfig struct {
 	Url         string
 	ApiKey      string
 	ElasticJson ElasticDocs
+	Client      *elasticsearch7.Client
 }
 
 type ElasticDocs struct {
@@ -37,15 +39,7 @@ func NewElasticConfig(url, apiKey string) *ElasticConfig {
 	}
 }
 
-func (e *ElasticConfig) UploadtoElastic() error {
-
-	if reflect.ValueOf(e.ElasticJson).IsZero() {
-		return fmt.Errorf("%w,elastic json is empty.", core.ErrEmpty)
-	}
-	body, err := json.Marshal(e.ElasticJson)
-	if err != nil {
-		return err
-	}
+func (e *ElasticConfig) Connect() error {
 	cfg := elasticsearch7.Config{
 		Addresses: []string{
 			e.Url,
@@ -61,22 +55,36 @@ func (e *ElasticConfig) UploadtoElastic() error {
 			},
 		},
 	}
-
 	es, err := elasticsearch7.NewClient(cfg)
 
 	if err != nil {
 		return fmt.Errorf("Elasticsearch connection error: %s", err.Error())
 	}
 
-	res, err := es.Index(
+	e.Client = es
+	return nil
+
+}
+
+func (e *ElasticConfig) UploadtoElastic() error {
+
+	if reflect.ValueOf(e.ElasticJson).IsZero() {
+		return fmt.Errorf("%w,elastic json is empty.", core.ErrEmpty)
+	}
+	body, err := json.Marshal(e.ElasticJson)
+	if err != nil {
+		return err
+	}
+
+	res, err := e.Client.Index(
 		"bgptools",
 		bytes.NewReader(body),
 	)
 
 	if err != nil {
-		return fmt.Errorf("Error indexing document 1: %s", err.Error())
+		return fmt.Errorf("Error indexing document: %s", err.Error())
 	}
-	fmt.Println("status code: ", res.StatusCode)
+	log.Printf("doc: %s | status : %d", string(body), res.StatusCode)
 	defer res.Body.Close()
 	return nil
 }
