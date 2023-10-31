@@ -53,8 +53,14 @@ func main() {
 		log.Fatalln(err)
 	}
 
+	// chunk file
+	chunk := utils.NewFiles()
+	if err := chunk.ChunkFile(tarGZ.ExtraxtFiles["table"]); err != nil {
+		log.Fatal(err)
+	}
+
 	// gather data and upload to elastic search
-	gather := helpers.NewGatherInfo(tarGZ.ExtraxtFiles["table"], tarGZ.ExtraxtFiles["GeoLite2-Country"], tarGZ.ExtraxtFiles["asn"])
+	gather := helpers.NewGatherInfo(chunk.ListChunkPath, tarGZ.ExtraxtFiles["GeoLite2-Country"], tarGZ.ExtraxtFiles["asn"])
 	elk := helpers.NewElasticConfig(conf.ElasticUrl, conf.ElasticApikey)
 	gather.ElasticInterface = elk
 	if err := gather.MakeBuild(); err != nil {
@@ -63,6 +69,8 @@ func main() {
 
 	utils.Remove(s3.EnsureFiles)
 	utils.Remove(tarGZ.ExtraxtFiles)
+	utils.Remove(chunk.ListChunkPath)
+
 	return
 
 }

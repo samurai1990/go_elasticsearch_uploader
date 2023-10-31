@@ -1,13 +1,17 @@
 package utils
 
 import (
+	"errors"
 	"log"
 	"os"
 
 	"github.com/spf13/viper"
 )
 
-const TempPath = "/tmp/bgptools_elk"
+const (
+	TempPath      = "/tmp/bgptools_elk"
+	BaseChunkPath = TempPath + "/chunks"
+)
 
 type config struct {
 	MinioIP        string `mapstructure:"MINIO_ENDPOINT_IP"`
@@ -39,13 +43,25 @@ func (c *config) LoadConfig(path string) error {
 	if err := ensureDir(TempPath); err != nil {
 		return err
 	}
+
+	if err := ensureDir(BaseChunkPath); err != nil {
+		return err
+	}
+
+	if err := SetULimit(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
 func ensureDir(name string) error {
-	err := os.Mkdir(name, 0755)
-	if err != nil {
-		return err
+	_, err := os.Open(name)
+	if errors.Is(err, os.ErrNotExist) {
+		err := os.Mkdir(name, 0755)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
