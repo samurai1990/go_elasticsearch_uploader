@@ -10,7 +10,7 @@ __debug_*
 
 
 #buid app
-bgp_elastic_uploader
+bgp-elastic-uploader
 
 #log file
 *.log

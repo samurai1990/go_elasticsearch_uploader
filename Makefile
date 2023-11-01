@@ -3,11 +3,32 @@
 
 CURRENT_DIR := $(shell pwd)
 
+LOGROTATE_CONF := /etc/logrotate.d/bgp-elastic-uploader
+
+LOG_PATH := /var/log/bgp-elastic-uploader
+
+define LOGROTATE_CONF_CONTENT
+$(LOG_PATH)/*.log {
+    daily \
+    missingok
+    rotate 7
+    compress
+    delaycompress
+    notifempty
+}
+endef
+
+export LOGROTATE_CONF_CONTENT
+
 all:build
 
-build:
-	-rm bgp_elastic_uploader
-	@go build -o bgp_elastic_uploader
+init:
+	-mkdir $(LOG_PATH)
+	@echo "$$LOGROTATE_CONF_CONTENT" > $(LOGROTATE_CONF)
+
+build:init
+	-rm bgp-elastic-uploader
+	@go build -o bgp-elastic-uploader
 
 schedule:
-	@(crontab -l ; echo "22 5 * * 0 cd $(CURRENT_DIR); ./bgp_elastic_uploader") | crontab -
+	@(crontab -l ; echo "22 5 * * 0 cd $(CURRENT_DIR); ./bgp-elastic-uploader") | crontab -
