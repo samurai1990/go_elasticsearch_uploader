@@ -65,7 +65,7 @@ func (g *GatherInfo) MakeBuild() error {
 
 	workers := 2000
 	producers := 1000
-	deliveries := 2
+	deliveries := 1500
 
 	deliveryQueue := make(chan GatherJson)
 	workerQueue := make(chan GatherJson)
@@ -96,6 +96,7 @@ func (g *GatherInfo) MakeBuild() error {
 						} else {
 							atomic.AddInt64(&cnt, 1)
 						}
+						fmt.Println(cnt)
 						wg.Done()
 					} else {
 						return
