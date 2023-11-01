@@ -12,12 +12,13 @@ const (
 )
 
 type config struct {
-	MinioIP        string `mapstructure:"MINIO_ENDPOINT_IP"`
-	MinioPort      string `mapstructure:"MINIO_ENDPOINT_PORT"`
-	MinioAccessKey string `mapstructure:"MINIO_ACCESS_KEY"`
-	MinioSecertKey string `mapstructure:"MINIO_SECRET_KEY"`
-	ElasticUrl     string `mapstructure:"ELASTIC_URL"`
-	ElasticApikey  string `mapstructure:"ELASTIC_APIKEY"`
+	MinioIP          string `mapstructure:"MINIO_ENDPOINT_IP"`
+	MinioPort        string `mapstructure:"MINIO_ENDPOINT_PORT"`
+	MinioAccessKey   string `mapstructure:"MINIO_ACCESS_KEY"`
+	MinioSecertKey   string `mapstructure:"MINIO_SECRET_KEY"`
+	ElasticUrl       string `mapstructure:"ELASTIC_URL"`
+	ElasticApikey    string `mapstructure:"ELASTIC_APIKEY"`
+	NumberDeliveries int    `mapstructure:"NUMBER_DELIVERIES"`
 }
 
 func NewConfig() *config {

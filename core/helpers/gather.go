@@ -30,6 +30,7 @@ type GatherInfo struct {
 	ChunkPath        []string
 	GeommdbPath      string
 	CsvPath          string
+	NumberDelivereis int
 	ElasticInterface *ElasticConfig
 }
 
@@ -45,11 +46,12 @@ type CSVField struct {
 	class string
 }
 
-func NewGatherInfo(chunkPath []string, geoMMdbPath, CsvPath string) *GatherInfo {
+func NewGatherInfo(chunkPath []string, geoMMdbPath, CsvPath string, nDeliveries int) *GatherInfo {
 	return &GatherInfo{
-		ChunkPath:   chunkPath,
-		GeommdbPath: geoMMdbPath,
-		CsvPath:     CsvPath,
+		ChunkPath:        chunkPath,
+		GeommdbPath:      geoMMdbPath,
+		CsvPath:          CsvPath,
+		NumberDelivereis: nDeliveries,
 	}
 }
 
@@ -59,13 +61,13 @@ func getTime() string {
 	return t
 }
 
-func (g *GatherInfo) MakeBuild() error {
+func (g *GatherInfo) RunGather() error {
 	wg := &sync.WaitGroup{}
 	c := cache.New(3*time.Minute, 5*time.Minute)
 
-	workers := 2000
-	producers := 1000
-	deliveries := 1500
+	workers := 1000
+	producers := 300
+	deliveries := g.NumberDelivereis
 
 	deliveryQueue := make(chan GatherJson)
 	workerQueue := make(chan GatherJson)
@@ -96,7 +98,6 @@ func (g *GatherInfo) MakeBuild() error {
 						} else {
 							atomic.AddInt64(&cnt, 1)
 						}
-						fmt.Println(cnt)
 						wg.Done()
 					} else {
 						return

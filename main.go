@@ -10,7 +10,7 @@ import (
 func main() {
 
 	// log config
-	fileName := "app.log"
+	fileName := "/var/log/bgp_elastic_uploader.log"
 	logFile, err := os.OpenFile(fileName, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0644)
 	if err != nil {
 		log.Panic(err)
@@ -60,13 +60,14 @@ func main() {
 	}
 
 	// gather data and upload to elastic search
-	gather := helpers.NewGatherInfo(chunk.ListChunkPath, tarGZ.ExtraxtFiles["GeoLite2-Country"], tarGZ.ExtraxtFiles["asn"])
+	gather := helpers.NewGatherInfo(chunk.ListChunkPath, tarGZ.ExtraxtFiles["GeoLite2-Country"], tarGZ.ExtraxtFiles["asn"], conf.NumberDeliveries)
 	elk := helpers.NewElasticConfig(conf.ElasticUrl, conf.ElasticApikey)
 	gather.ElasticInterface = elk
-	if err := gather.MakeBuild(); err != nil {
+	if err := gather.RunGather(); err != nil {
 		log.Fatal(err)
 	}
 
+	// remove all file
 	utils.Remove(s3.EnsureFiles)
 	utils.Remove(tarGZ.ExtraxtFiles)
 	utils.Remove(chunk.ListChunkPath)

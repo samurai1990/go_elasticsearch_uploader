@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net"
 	"reflect"
 	"time"
@@ -45,9 +46,11 @@ func (e *ElasticConfig) Connect() error {
 		},
 		APIKey: e.ApiKey,
 		Transport: &http.Transport{
-			MaxIdleConnsPerHost:   1000,
-			ResponseHeaderTimeout: time.Second,
-			DialContext:           (&net.Dialer{Timeout: time.Second}).DialContext,
+			ExpectContinueTimeout: time.Second * 3,
+			TLSHandshakeTimeout:   time.Second * 3,
+			MaxIdleConnsPerHost:   2,
+			ResponseHeaderTimeout: time.Second * 3,
+			DialContext:           (&net.Dialer{Timeout: time.Second * 3}).DialContext,
 			TLSClientConfig: &tls.Config{
 				MinVersion:         tls.VersionTLS13,
 				InsecureSkipVerify: true,
@@ -84,6 +87,8 @@ func (e *ElasticConfig) UploadtoElastic() error {
 		return fmt.Errorf("Error indexing document: %s", err.Error())
 	}
 
+	log.Printf("doc: %s | status : %d", string(body), res.StatusCode)
 	defer res.Body.Close()
+
 	return nil
 }

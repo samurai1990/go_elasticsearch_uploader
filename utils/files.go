@@ -52,7 +52,7 @@ func (f *Files) ChunkFile(path string) error {
 	scanner := bufio.NewScanner(file)
 	scanner.Split(bufio.ScanLines)
 
-	chunkSize := 1000
+	chunkSize := 5000
 	chunkIndex := 1
 	chunkLines := []string{}
 
