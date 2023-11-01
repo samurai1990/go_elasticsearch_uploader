@@ -1,9 +1,7 @@
 package utils
 
 import (
-	"errors"
 	"log"
-	"os"
 
 	"github.com/spf13/viper"
 )
@@ -40,28 +38,13 @@ func (c *config) LoadConfig(path string) error {
 		log.Fatal(err)
 	}
 
-	if err := ensureDir(TempPath); err != nil {
+	if err := EnsureDir(TempPath); err != nil {
 		return err
 	}
 
-	if err := ensureDir(BaseChunkPath); err != nil {
+	if err := EnsureDir(BaseChunkPath); err != nil {
 		return err
 	}
 
-	if err := SetULimit(); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func ensureDir(name string) error {
-	_, err := os.Open(name)
-	if errors.Is(err, os.ErrNotExist) {
-		err := os.Mkdir(name, 0755)
-		if err != nil {
-			return err
-		}
-	}
 	return nil
 }

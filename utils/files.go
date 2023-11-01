@@ -2,6 +2,7 @@ package utils
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -95,5 +96,16 @@ func (f *Files) saveChunk(lines []string, index int) error {
 		return err
 	}
 	f.ListChunkPath = append(f.ListChunkPath, chunkFileName)
+	return nil
+}
+
+func EnsureDir(name string) error {
+	_, err := os.Open(name)
+	if errors.Is(err, os.ErrNotExist) {
+		err := os.Mkdir(name, 0755)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
