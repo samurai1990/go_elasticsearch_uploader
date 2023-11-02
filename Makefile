@@ -9,12 +9,13 @@ LOG_PATH := /var/log/bgp-elastic-uploader
 
 define LOGROTATE_CONF_CONTENT
 $(LOG_PATH)/*.log {
-    daily \
+    rotate 5
+    weekly
     missingok
-    rotate 7
+    notifempty
     compress
     delaycompress
-    notifempty
+    create 644 root root
 }
 endef
 
