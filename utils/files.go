@@ -102,7 +102,7 @@ func (f *Files) saveChunk(lines []string, index int) error {
 func EnsureDir(name string) error {
 	_, err := os.Open(name)
 	if errors.Is(err, os.ErrNotExist) {
-		err := os.Mkdir(name, 0755)
+		err := os.Mkdir(name, os.FileMode(0666))
 		if err != nil {
 			return err
 		}

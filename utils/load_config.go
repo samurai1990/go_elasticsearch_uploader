@@ -2,6 +2,7 @@ package utils
 
 import (
 	"log"
+	"os"
 
 	"github.com/spf13/viper"
 )
@@ -39,6 +40,10 @@ func (c *config) LoadConfig(path string) error {
 		log.Fatal(err)
 	}
 
+	if err := os.RemoveAll(TempPath); err != nil {
+		return err
+	}
+	
 	if err := EnsureDir(TempPath); err != nil {
 		return err
 	}
