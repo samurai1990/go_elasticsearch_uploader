@@ -62,6 +62,8 @@ func getTime() string {
 }
 
 func (g *GatherInfo) RunGather() error {
+	start_time := time.Now()
+
 	wg := &sync.WaitGroup{}
 	c := cache.New(3*time.Minute, 5*time.Minute)
 
@@ -134,8 +136,14 @@ func (g *GatherInfo) RunGather() error {
 
 	wg.Wait()
 	Done <- true
-	log.Printf("total doc sended to elastic is: %d", cnt)
 	c.Flush()
+	
+	finish_time := time.Now()
+	duration := finish_time.Sub(start_time)
+	
+	log.Printf("total doc sended to elastic is: %d | duration: %v", cnt,duration)
+
+
 	return nil
 }
 
