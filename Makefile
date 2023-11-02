@@ -14,7 +14,6 @@ $(LOG_PATH)/*.log {
     missingok
     notifempty
     compress
-    delaycompress
     create 644 root root
 }
 endef
