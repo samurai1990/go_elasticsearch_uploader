@@ -28,7 +28,7 @@ type ElasticDocs struct {
 	ASN           int    `json:"asn"`
 	CountryCode   string `json:"country_code"`
 	Prefix        string `json:"prefix"`
-	PrefixVersion int    `json:"Prefix_version"`
+	PrefixVersion int    `json:"prefix_version"`
 	TimeStamp     string `json:"timestamp"`
 }
 
