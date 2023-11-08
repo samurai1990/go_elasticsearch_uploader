@@ -13,7 +13,7 @@ func main() {
 	logName := "/var/log/bgp-elastic-uploader/bgp-elastic-uploader.log"
 	logFile, err := os.OpenFile(logName, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0644)
 	if err != nil {
-		log.Panic(err)
+		log.Fatalln(err)
 	}
 	defer logFile.Close()
 	log.SetOutput(logFile)
@@ -33,13 +33,13 @@ func main() {
 	// get list object from S3
 	typeFiles := []string{"table", "asn", "GeoLite2-Country"}
 	s3.ListTypeFile = typeFiles
-	errList, objcs := s3.ListObjectS3()
-	if errList != nil {
+	errS3, objcsS3 := s3.ListObjectS3()
+	if errS3 != nil {
 		log.Fatal(err)
 	}
 
 	// extract last file and get from S3
-	if err := s3.LastFileS3(objcs); err != nil {
+	if err := s3.LastFileS3(objcsS3); err != nil {
 		log.Fatal(err)
 	}
 	if err := s3.GetS3(); err != nil {
