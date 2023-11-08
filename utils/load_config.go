@@ -43,7 +43,7 @@ func (c *config) LoadConfig(path string) error {
 	if err := os.RemoveAll(TempPath); err != nil {
 		return err
 	}
-	
+
 	if err := EnsureDir(TempPath); err != nil {
 		return err
 	}

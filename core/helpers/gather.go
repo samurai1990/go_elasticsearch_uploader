@@ -14,7 +14,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/patrickmn/go-cache"
+	"bgptools/utils"
 )
 
 type GatherJson struct {
@@ -65,9 +65,11 @@ func (g *GatherInfo) RunGather() error {
 	start_time := time.Now()
 
 	wg := &sync.WaitGroup{}
-	c := cache.New(3*time.Minute, 5*time.Minute)
 
-	workers := 1000
+	cachePath := fmt.Sprintf("%s/cache_db", utils.TempPath)
+	cache := NewCacheDB(cachePath)
+
+	workers := 500
 	producers := 300
 	deliveries := g.NumberDelivereis
 
@@ -76,7 +78,13 @@ func (g *GatherInfo) RunGather() error {
 	producerQueue := make(chan string)
 	Done := make(chan bool)
 
-	DumpCSVToCache(g.CsvPath, c)
+	if err := cache.HandleCacheDB(); err != nil {
+		return err
+	}
+
+	if err := DumpCSVToCache(g.CsvPath, cache); err != nil {
+		log.Fatalln(err)
+	}
 
 	if err := g.ElasticInterface.Connect(); err != nil {
 		log.Fatal(err)
@@ -116,7 +124,7 @@ func (g *GatherInfo) RunGather() error {
 	for w := 0; w < workers; w++ {
 		go func() {
 			for obj := range workerQueue {
-				MetaData(c, g.GeommdbPath, obj, deliveryQueue)
+				MetaData(cache, g.GeommdbPath, obj, deliveryQueue)
 			}
 		}()
 	}
@@ -136,20 +144,19 @@ func (g *GatherInfo) RunGather() error {
 
 	wg.Wait()
 	Done <- true
-	c.Flush()
-	
+	cache.DB.Close()
+	cache.DropDB()
+
 	finish_time := time.Now()
 	duration := finish_time.Sub(start_time)
-	
-	log.Printf("total doc sended to elastic is: %d | duration: %v", cnt,duration)
 
+	log.Printf("total doc sended to elastic is: %d | duration: %v", cnt, duration)
 
 	return nil
 }
 
-func MetaData(c *cache.Cache, mmdbPath string, s GatherJson, ch chan GatherJson) {
-	asndec := QueryCsvFromCache(c, s.ASN)
-	s.AsDescription = asndec
+func MetaData(c *CacheDB, mmdbPath string, s GatherJson, ch chan GatherJson) {
+	s.QueryCsvFromCache(c, s.ASN)
 	mmdb := NewMMDB(s.Prefix)
 	if err := mmdb.HandleMMDB(mmdbPath); err != nil {
 		log.Fatal(err)
@@ -160,29 +167,37 @@ func MetaData(c *cache.Cache, mmdbPath string, s GatherJson, ch chan GatherJson)
 	ch <- s
 }
 
-func QueryCsvFromCache(c *cache.Cache, asn int) string {
-	AsnDescription, found := c.Get(fmt.Sprintf("%d", asn))
-	if found {
-		return AsnDescription.(string)
+func (s *GatherJson) QueryCsvFromCache(c *CacheDB, asn int) {
+	asnDesc, err := c.Get(fmt.Sprintf("%d", asn))
+	if err != nil {
+		log.Println(fmt.Sprintf("during error: %s , asn: %d", err.Error(), asn))
 	}
-	return ""
+	s.AsDescription = asnDesc
+	return
 }
 
-func DumpCSVToCache(path string, c *cache.Cache) {
+func DumpCSVToCache(path string, c *CacheDB) error {
+
 	csvFile, err := os.Open(path)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	defer csvFile.Close()
 	ObjreaderCSV := csv.NewReader(csvFile)
 	records, err := ObjreaderCSV.ReadAll()
+	cnt := 0
 	for i, records := range records {
 		if i == 0 {
 			continue
 		}
 		replacedStr := strings.Replace(records[1], "\"", "'", -1)
-		c.Set(records[0][2:], replacedStr, cache.DefaultExpiration)
+		if err := c.Set(records[0][2:], replacedStr); err != nil {
+			log.Fatalln(err)
+		}
+		cnt = i
 	}
+	log.Println("number of save csv to cache db: ", cnt)
+	return nil
 }
 
 func Producer(path string, wg *sync.WaitGroup, ch chan GatherJson) {
