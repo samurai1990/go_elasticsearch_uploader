@@ -99,6 +99,7 @@ func (g *GatherInfo) RunGather() error {
 				case out, ok := <-deliveryQueue:
 					if ok {
 						g.ElasticInterface.ElasticJson = ElasticDocs(out)
+						time.Sleep(500 * time.Millisecond)
 						if err := g.ElasticInterface.UploadtoElastic(); err != nil {
 							if errors.Is(err, core.ErrEmpty) {
 								log.Println(err)
