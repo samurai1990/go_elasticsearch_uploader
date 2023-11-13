@@ -1,7 +1,10 @@
 package helpers
 
 import (
+	"bgptools/core"
+	"fmt"
 	"os"
+	"strings"
 
 	"github.com/rosedblabs/rosedb/v2"
 )
@@ -40,6 +43,9 @@ func (c *CacheDB) Set(key, value string) error {
 func (c *CacheDB) Get(key string) (string, error) {
 	value, err := c.DB.Get([]byte(key))
 	if err != nil {
+		if strings.Contains(err.Error(), "key not found in database") {
+			return "", fmt.Errorf("warning :: %w", core.ErrNotFound)
+		}
 		return "", err
 	}
 	return string(value), nil
