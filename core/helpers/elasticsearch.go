@@ -1,26 +1,27 @@
 package helpers
 
 import (
-	"bgptools/core"
-	"bytes"
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net"
-	"reflect"
+	"strings"
+	"sync/atomic"
 	"time"
 
 	"net/http"
 
 	elasticsearch7 "github.com/elastic/go-elasticsearch/v7"
+	"github.com/elastic/go-elasticsearch/v7/esutil"
 )
 
 type ElasticConfig struct {
-	Url         string
-	ApiKey      string
-	ElasticJson ElasticDocs
-	Client      *elasticsearch7.Client
+	Url      string
+	ApiKey   string
+	DocsJson ElasticDocs
+	Client   *elasticsearch7.Client
 }
 
 type ElasticDocs struct {
@@ -68,27 +69,55 @@ func (e *ElasticConfig) Connect() error {
 
 }
 
-func (e *ElasticConfig) UploadtoElastic() error {
+func (es *ElasticConfig) UploadBlunktoElastic(docsList []*ElasticDocs) ([]*ElasticDocs, error) {
 
-	if reflect.ValueOf(e.ElasticJson).IsZero() {
-		return fmt.Errorf("%w,elastic json is empty.", core.ErrEmpty)
-	}
-	body, err := json.Marshal(e.ElasticJson)
-	if err != nil {
-		return err
-	}
-
-	res, err := e.Client.Index(
-		"bgptools",
-		bytes.NewReader(body),
-	)
+	bi, err := esutil.NewBulkIndexer(esutil.BulkIndexerConfig{
+		Index:         "bgptools",
+		Client:        es.Client,
+		NumWorkers:    10,
+		FlushBytes:    5e+6,
+		FlushInterval: 30 * time.Second,
+	})
 
 	if err != nil {
-		return fmt.Errorf("Error indexing document: %s", err.Error())
+		log.Fatalf("Error creating the indexer: %s", err)
 	}
 
-	log.Printf("doc: %s | status : %d", string(body), res.StatusCode)
-	defer res.Body.Close()
+	var FailList []*ElasticDocs
+	for _, doc := range docsList {
+		data, err := json.Marshal(doc)
+		if err != nil {
+			log.Fatalf("Error marshalling document: %s", err)
+		}
+		err = bi.Add(
+			context.Background(),
+			esutil.BulkIndexerItem{
+				Action: "index",
+				Body:   strings.NewReader(string(data)),
+				OnSuccess: func(ctx context.Context, item esutil.BulkIndexerItem, res esutil.BulkIndexerResponseItem) {
+					log.Printf("doc: %v | status : %d", item.Body, res.Status)
+					atomic.AddInt64(&COUNT, 1)
+				},
+				OnFailure: func(ctx context.Context, item esutil.BulkIndexerItem, res esutil.BulkIndexerResponseItem, err error) {
+					log.Printf("doc: %v | status : %d", item.Body, res.Status)
+					FailList = append(FailList, doc)
+				},
+			},
+		)
+		if err != nil {
+			log.Fatalf("Error adding document to indexer: %s", err)
+		}
+	}
 
-	return nil
+	if err := bi.Close(context.Background()); err != nil {
+		log.Fatalf("Error closing the indexer: %s", err)
+	}
+
+	status := "successed"
+	if len(FailList) != 0 {
+		status = "fail"
+	}
+
+	log.Printf("Added %d :: Failed %d :: status %s", bi.Stats().NumAdded, bi.Stats().NumFailed, status)
+	return FailList, nil
 }
