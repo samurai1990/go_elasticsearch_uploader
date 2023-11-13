@@ -10,8 +10,7 @@ import (
 func main() {
 
 	// log config
-	// logName := "/var/log/bgp-elastic-uploader/bgp-elastic-uploader.log"
-	logName := "bgp-elastic-uploader.log"
+	logName := "/var/log/bgp-elastic-uploader/bgp-elastic-uploader.log"
 	logFile, err := os.OpenFile(logName, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0644)
 	if err != nil {
 		log.Println(err)

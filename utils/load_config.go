@@ -8,8 +8,7 @@ import (
 )
 
 const (
-	// TempPath      = "/tmp/bgptools_elk"
-	TempPath      = "./temp/bgptools_elk"
+	TempPath      = "/tmp/bgptools_elk"
 	BaseChunkPath = TempPath + "/chunks"
 )
 
