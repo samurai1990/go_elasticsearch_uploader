@@ -10,10 +10,11 @@ import (
 func main() {
 
 	// log config
-	logName := "/var/log/bgp-elastic-uploader/bgp-elastic-uploader.log"
+	// logName := "/var/log/bgp-elastic-uploader/bgp-elastic-uploader.log"
+	logName := "bgp-elastic-uploader.log"
 	logFile, err := os.OpenFile(logName, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0644)
 	if err != nil {
-		log.Fatalln(err)
+		log.Println(err)
 	}
 	defer logFile.Close()
 	log.SetOutput(logFile)
@@ -68,6 +69,7 @@ func main() {
 	}
 
 	// remove all file
+	log.Println("cleaning...")
 	utils.Remove(s3.EnsureFiles)
 	utils.Remove(tarGZ.ExtraxtFiles)
 	utils.Remove(chunk.ListChunkPath)

@@ -8,7 +8,8 @@ import (
 )
 
 const (
-	TempPath      = "/tmp/bgptools_elk"
+	// TempPath      = "/tmp/bgptools_elk"
+	TempPath      = "./temp/bgptools_elk"
 	BaseChunkPath = TempPath + "/chunks"
 )
 
@@ -51,6 +52,5 @@ func (c *config) LoadConfig(path string) error {
 	if err := EnsureDir(BaseChunkPath); err != nil {
 		return err
 	}
-
 	return nil
 }

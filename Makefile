@@ -23,8 +23,8 @@ export LOGROTATE_CONF_CONTENT
 all:build
 
 init:
-	-mkdir $(LOG_PATH)
-	@echo "$$LOGROTATE_CONF_CONTENT" > $(LOGROTATE_CONF)
+# -mkdir $(LOG_PATH)
+# @echo "$$LOGROTATE_CONF_CONTENT" > $(LOGROTATE_CONF)
 
 build:init
 	-rm bgp-elastic-uploader

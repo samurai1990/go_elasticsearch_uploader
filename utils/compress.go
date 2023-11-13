@@ -68,6 +68,7 @@ func (t *TARGz) ExtractTarGz() error {
 					outFile.Close()
 					mux.Lock()
 					e[format] = absolutePath
+					log.Printf("%s :: extracted.", absolutePath)
 					mux.Unlock()
 					wg.Done()
 
